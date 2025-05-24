@@ -2,6 +2,7 @@ package de.thomas_guett.ollama_documentrouter.service;
 
 import org.apache.commons.io.FileUtils;
 import org.springframework.util.ResourceUtils;
+import org.springframework.web.reactive.function.client.WebClient;
 
 import java.io.File;
 import java.io.IOException;

@@ -18,7 +18,6 @@ public class OllamaService {
 
 	public OllamaService() {
 		this.webClient = WebClient.create("http://localhost:11434/api");
-		//this.webClient = webClientBuilder.baseUrl("http://localhost:11434/api").build();
 	}
 	
 	public Mono<String> getOllamaVersion() {
@@ -29,22 +28,27 @@ public class OllamaService {
 		return this.webClient.get().uri("/tags").retrieve().bodyToMono(ModelListResponse.class);
 	}
 
-	public Mono<CompletionResponse> chatCompletion(String prompt) throws IOException {
+//	public CompletionResponse chatCompletion(String prompt) throws IOException {
+//		Message message = new Message();
+//		message.setRole("user");
+//		message.setContent(prompt);
+//		Message imageMessage = new Message();
+//		imageMessage.setRole("user");
+//		List<String> base64Images = new ArrayList<>();
+//		base64Images.add(ImageService.readFileAsBase64("./testimages/GescannteDokumente.png"));
+//		imageMessage.setImages(base64Images);
+//		List<Message> messages = new ArrayList<>();
+//		messages.add(message);
+//		messages.add(imageMessage);
+//		return chatCompletion(messages);
+//	}
+
+	public CompletionResponse chatCompletion(List<Message> messages, String model) {
 		CompletionRequest completionRequest = new CompletionRequest();
-		completionRequest.setModel("moondream:latest");
+		completionRequest.setModel(model);
 		completionRequest.setStream(false);
-		Message message = new Message();
-		message.setRole("user");
-		message.setContent("What do you see in this image?");
-		Message imageMessage = new Message();
-		imageMessage.setRole("user");
-		List<String> base64Images = new ArrayList<>();
-		base64Images.add(ImageService.readFileAsBase64("./testimages/GescannteDokumente.png"));
-		imageMessage.setImages(base64Images);
-		List<Message> messages = new ArrayList<>();
-		messages.add(message);
-		messages.add(imageMessage);
 		completionRequest.setMessages(messages);
-		return this.webClient.post().uri("/chat").body(Mono.just(completionRequest), CompletionRequest.class).retrieve().bodyToMono(CompletionResponse.class);
+		Mono<CompletionResponse> completionResponseMono = this.webClient.post().uri("/chat").body(Mono.just(completionRequest), CompletionRequest.class).retrieve().bodyToMono(CompletionResponse.class);
+		return completionResponseMono.block();
 	}
 }
