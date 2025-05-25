@@ -1,0 +1,60 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.7.0",
+  "exporter": {
+    "name": "Camunda Web Modeler",
+    "version": "6e03b81"
+  },
+  "schemaVersion": 18,
+  "id": "review-address-change-191hekd",
+  "components": [
+    {
+      "label": "AI extracted Address",
+      "type": "textarea",
+      "layout": {
+        "row": "Row_0ohdcwr",
+        "columns": null
+      },
+      "id": "Field_1hehxst",
+      "key": "newAddress"
+    },
+    {
+      "label": "original document",
+      "type": "documentPreview",
+      "layout": {
+        "row": "Row_0x1xo7n",
+        "columns": null
+      },
+      "id": "Field_1xfpbgd",
+      "dataSource": "=document"
+    },
+    {
+      "label": "confirm new address?",
+      "type": "checkbox",
+      "layout": {
+        "row": "Row_1ieu93v",
+        "columns": null
+      },
+      "id": "Field_16k836h",
+      "key": "newAddressConfirmed"
+    },
+    {
+      "label": "Reason for rejection",
+      "type": "textarea",
+      "layout": {
+        "row": "Row_0hrmtqh",
+        "columns": null
+      },
+      "id": "Field_144mei0",
+      "key": "rejectionReason",
+      "description": "help improve the AI, state the reason why the extracted address was faulty",
+      "conditional": {
+        "hide": "=newAddressConfirmed"
+      },
+      "validate": {
+        "required": true
+      }
+    }
+  ],
+  "type": "default"
+}

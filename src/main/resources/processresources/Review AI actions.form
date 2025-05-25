@@ -1,0 +1,77 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.7.0",
+  "exporter": {
+    "name": "Camunda Web Modeler",
+    "version": "6e03b81"
+  },
+  "schemaVersion": 18,
+  "id": "review-actions-taken-and-reasoning-0px6wuy",
+  "components": [
+    {
+      "text": "#### Review AI actions\nModel: {{model}}\nReasoning: {{aiReasoning}}\nPossible actions:\n{{possibleActions}}\n\nActions taken: \n{{#loop nextActions}}\n* {{this}}\n{{/loop}}",
+      "type": "text",
+      "layout": {
+        "row": "Row_1thpzdp",
+        "columns": null
+      },
+      "id": "Field_0f0bci6"
+    },
+    {
+      "label": "original Document",
+      "type": "documentPreview",
+      "layout": {
+        "row": "Row_0w663pi",
+        "columns": null
+      },
+      "id": "Field_0a262my",
+      "dataSource": "=document"
+    },
+    {
+      "label": "Reviewer Feedback",
+      "type": "textarea",
+      "layout": {
+        "row": "Row_08jqd0e",
+        "columns": null
+      },
+      "id": "Field_1wux4on",
+      "key": "reviewerFeedback"
+    },
+    {
+      "label": "Feedback Rating",
+      "values": [
+        {
+          "label": "★★★★★",
+          "value": "5"
+        },
+        {
+          "label": "★★★★✩",
+          "value": "4"
+        },
+        {
+          "label": "★★★✩✩",
+          "value": "3"
+        },
+        {
+          "label": "★★✩✩✩",
+          "value": "2"
+        },
+        {
+          "label": "★✩✩✩✩",
+          "value": "1"
+        }
+      ],
+      "type": "select",
+      "layout": {
+        "row": "Row_18hop1f",
+        "columns": 4
+      },
+      "id": "Field_1jrbi3e",
+      "key": "feedbackRating",
+      "validate": {
+        "required": true
+      }
+    }
+  ],
+  "type": "default"
+}

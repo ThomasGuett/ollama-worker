@@ -1,0 +1,52 @@
+{
+  "executionPlatform": "Camunda Cloud",
+  "executionPlatformVersion": "8.7.0",
+  "exporter": {
+    "name": "Camunda Web Modeler",
+    "version": "6e03b81"
+  },
+  "schemaVersion": 18,
+  "id": "forwarded-request-0nyv4vq",
+  "components": [
+    {
+      "text": "#### Your help is needed",
+      "type": "text",
+      "layout": {
+        "row": "Row_01ktskg",
+        "columns": null
+      },
+      "id": "Field_13l0079"
+    },
+    {
+      "text": "#### AI Agent:\n{{model}}",
+      "type": "text",
+      "layout": {
+        "row": "Row_1wewzsh",
+        "columns": null
+      },
+      "id": "Field_11t7h1d"
+    },
+    {
+      "label": "AI reasoning",
+      "type": "textarea",
+      "layout": {
+        "row": "Row_1xkn59s",
+        "columns": null
+      },
+      "id": "Field_18sf40q",
+      "key": "textarea_brk5ey",
+      "description": "The AI reasoning"
+    },
+    {
+      "label": "scanned document",
+      "type": "documentPreview",
+      "layout": {
+        "row": "Row_1axf095",
+        "columns": null
+      },
+      "id": "Field_06kj2kk",
+      "dataSource": "=document"
+    }
+  ],
+  "type": "default"
+}

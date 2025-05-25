@@ -1,5 +1,6 @@
 package de.thomas_guett.ollama_documentrouter;
 
+import com.fasterxml.jackson.databind.util.JSONPObject;
 import de.thomas_guett.ollama_documentrouter.model.*;
 import de.thomas_guett.ollama_documentrouter.service.DocumentService;
 import de.thomas_guett.ollama_documentrouter.service.ImageService;
@@ -7,6 +8,8 @@ import de.thomas_guett.ollama_documentrouter.service.OllamaService;
 import io.camunda.zeebe.client.api.response.ActivatedJob;
 import io.camunda.zeebe.client.api.worker.JobClient;
 import io.camunda.zeebe.spring.client.annotation.JobWorker;
+import org.json.JSONArray;
+import org.json.JSONObject;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import reactor.core.publisher.Mono;
@@ -48,15 +51,36 @@ public class OllamaDocumentrouterApplication {
         return completionResponse.getMessage().getContent();
 	}
 
-	@JobWorker(type = "local-ai-prompt", autoComplete = false)
+	@JobWorker(type = "com.ollama.connector", autoComplete = false)
 	public void testWorker(final JobClient client, final ActivatedJob job) throws IOException {
-		String prompt = (String) job.getVariable("prompt");
+		// determine mode
+		String mode = (String) job.getVariable("operationMode");
+		Object optionalNextActions = job.getVariable("possibleActions");
+		String prompt = (String) job.getVariable("userPrompt");
 		String model = (String) job.getVariable("model");
 		List<Message> messages = new ArrayList<>();
 		Message promptMessage = new Message();
 		promptMessage.setRole("user");
 		promptMessage.setContent(prompt);
 		messages.add(promptMessage);
+		Object systemPromptObj = job.getVariable("systemPrompt");
+		if (systemPromptObj instanceof String) {
+			Message systemMessage = new Message();
+			systemMessage.setRole("system");
+			systemMessage.setContent((String) systemPromptObj);
+			messages.add(systemMessage);
+		}
+		if ("agentic".equalsIgnoreCase(mode)) {
+			Message agentInstruction = new Message();
+			agentInstruction.setRole("system");
+			// look for next actions
+			String possibleActionsString = (String) optionalNextActions;
+			String agentPrompt = new StringBuilder("you are a helpful agent that selects all relevant next actions based on these options: ")
+					.append(possibleActionsString)
+							.append("\n respond in a JSON String as following: {\"nextActions\":[String], \"reasoning\":\"String\"}. DO NOT use any additional text formatting.").toString();
+			agentInstruction.setContent(agentPrompt);
+			messages.add(agentInstruction);
+		}
 		Map<String, Object> jobVariables = job.getVariablesAsMap();
 		Object documentList = job.getVariable("document");
 		if(null != documentList) {
@@ -73,8 +97,25 @@ public class OllamaDocumentrouterApplication {
 			imageMessage.setImages(imageMessages);
 			messages.add(imageMessage);
 		}
+		// infer local ai
+		String completion = getChatCompletion(messages, model);
+		jobVariables.put("aiResponse", completion);
+		if("agentic".equalsIgnoreCase(mode)) {
+			// ensure proper return values
+			System.out.println("completion response: " + completion);
+			if(completion.startsWith("{")) {
+				JSONObject jsonObject = new JSONObject(completion);
+				List<String> nextActions = new ArrayList<>();
+				JSONArray jsonNextActions = jsonObject.optJSONArray("nextActions");
+				jsonNextActions.forEach(jsonAction -> {
+					nextActions.add(jsonAction.toString());
+				});
+				jobVariables.put("nextActions", nextActions);
+				jobVariables.put("aiReasoning", jsonObject.optString("reasoning"));
+			}
+		}
 
-		client.newCompleteCommand(job.getKey()).variable("aiResponse", getChatCompletion(messages, model)).send().join();
+		client.newCompleteCommand(job.getKey()).variables(jobVariables).send().join();
 	}
 
 	@JobWorker(type = "list-local-models", autoComplete = false)
