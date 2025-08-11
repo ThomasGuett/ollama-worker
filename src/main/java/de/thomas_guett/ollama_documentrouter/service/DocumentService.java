@@ -1,75 +1,62 @@
 package de.thomas_guett.ollama_documentrouter.service;
 
-import io.netty.handler.codec.http.HttpResponse;
-import org.apache.commons.io.IOUtils;
-import org.apache.hc.client5.http.classic.HttpClient;
-import org.apache.hc.client5.http.classic.methods.HttpGet;
-import org.springframework.core.io.buffer.DataBuffer;
-import org.springframework.core.io.buffer.DataBufferUtils;
-import org.springframework.http.HttpStatusCode;
-import org.springframework.web.reactive.function.BodyExtractors;
+import de.thomas_guett.ollama_documentrouter.model.CamundaAuthTokenResponse;
+import de.thomas_guett.ollama_documentrouter.model.CamundaClientInformation;
+import org.springframework.http.MediaType;
+import org.springframework.web.reactive.function.BodyInserters;
 import org.springframework.web.reactive.function.client.ExchangeStrategies;
 import org.springframework.web.reactive.function.client.WebClient;
-import reactor.core.publisher.Flux;
-import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 
 import java.io.*;
 import java.net.URL;
-import java.util.Base64;
 
 public class DocumentService {
     private WebClient webClient;
+    private String baseUrl;
+    private CamundaClientInformation clientInfo;
 
-    public DocumentService() {
-        String baseUrl = "http://localhost:8088/v2/documents/";
+    public DocumentService(CamundaClientInformation clientInfo) {
+        this.clientInfo = clientInfo;
+        this.baseUrl = null != clientInfo.getClientMode() && clientInfo.getClientMode().equalsIgnoreCase("saas")
+                && null != clientInfo.getCluster_id() && null != clientInfo.getRegion() ?
+                new StringBuilder("https://")
+                        .append(clientInfo.getRegion())
+                        .append(".zeebe.camunda.io:443/")
+                        .append(clientInfo.getCluster_id())
+                        .append("/v2").toString() : "http://localhost:8088/v2";
         this.webClient = WebClient.builder().baseUrl(baseUrl).exchangeStrategies(useMaxMemory()).build();
-        //this.webClient = WebClient.create("http://localhost:8088/v2/documents/");
     }
 
     public byte[] downloadDocument(String documentId, String contentHash) throws IOException {
-        URL obj = new URL("http://localhost:8088/v2/documents/" + documentId + "?contentHash=" + contentHash);
+        String url = this.baseUrl + "/documents/" + documentId + "?contentHash=" + contentHash;
+        // differentiate between saas and local (saas requires auth)
+        // TODO: add auth support for self-managed
+        if(null != clientInfo.getClientMode() && clientInfo.getClientMode().equalsIgnoreCase("saas")) {
+            String authUrl = "https://login.cloud.camunda.io";
+            WebClient tokenClient = WebClient.builder().baseUrl(authUrl).build();
+            CamundaAuthTokenResponse tokenResponse = tokenClient.post().uri("/oauth/token")
+                    .contentType(MediaType.APPLICATION_FORM_URLENCODED)
+                    .body(BodyInserters
+                            .fromFormData("grant_type", "client_credentials")
+                            .with("audience", "zeebe.camunda.io")
+                            .with("client_id", clientInfo.getClient_id())
+                            .with("client_secret", clientInfo.getClient_secret()))
+                    .retrieve().bodyToFlux(CamundaAuthTokenResponse.class)
+                    .onErrorMap(e -> new Exception("Authentication Error during Document Download.", e))
+                    .blockLast();
+            return this.webClient.get().uri(url).headers(h -> h.setBearerAuth(tokenResponse.getAccess_token()))
+                    .retrieve().bodyToMono(byte[].class).block();
+        }
+
+
+        URL obj = new URL(url);
         byte[] bytes = obj.openStream().readAllBytes();
-
-//        System.out.println("trying mono");
-//        Mono<byte[]> dataBuffer = this.webClient.get().uri(documentId).attribute("contentHash", contentHash).retrieve().onStatus(HttpStatusCode::is5xxServerError, response -> {
-//            System.out.println("Mono receives error: " + response);
-//            return null;
-//        }).bodyToMono(byte[].class);
-
-//        Mono<byte[]> mono = DataBufferUtils.join(dataBuffer).map(dataBuffer1 -> {
-//            byte[] bytes = new byte[dataBuffer1.readableByteCount()];
-//            dataBuffer1.read(bytes);
-//            DataBufferUtils.release(dataBuffer1);
-//            return bytes;
-//        });
-        //byte[] bytes = null != dataBuffer ? dataBuffer.block() : null;
-//        PipedOutputStream osPipe = new PipedOutputStream();
-//        PipedInputStream isPipe = new PipedInputStream(osPipe);
-//        DataBufferUtils.write(dataBuffer, osPipe).subscribeOn(Schedulers.boundedElastic()).doOnComplete(() -> {
-//            try {
-//                osPipe.close();
-//            } catch (IOException ignored) {
-//
-//            }
-//        }).subscribe(DataBufferUtils.releaseConsumer());
-
-
-        //WebClient.ResponseSpec responseSpec = this.webClient.get().uri(documentId).attribute("contentHash", contentHash).retrieve();
-        //Flux<byte[]> flux = responseSpec.bodyToFlux(byte[].class);
-        //byte[] bytes = is.readAllBytes();
-        return bytes;
-    }
-
-    byte[] streamToByteArray(InputStream stream) throws IOException {
-        byte[] bytes = new byte[stream.available()];
-        int byteCount = stream.read(bytes, 0, bytes.length);
         return bytes;
     }
 
     private static ExchangeStrategies useMaxMemory() {
-        //long totalMemory = Runtime.getRuntime().maxMemory();
 
-        return ExchangeStrategies.builder().codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)).build();
+        return ExchangeStrategies.builder()
+                .codecs(configurer -> configurer.defaultCodecs().maxInMemorySize(10 * 1024 * 1024)).build();
     }
 }

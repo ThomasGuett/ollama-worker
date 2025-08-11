@@ -1,3 +1,13 @@
+#camunda:
+#  client:
+#    mode: self-managed
+
 camunda:
   client:
-    mode: self-managed
+    mode: saas
+    auth:
+      client-id: <client-id>
+      client-secret: <client-secret>
+    cloud:
+      cluster-id: <cluster-id>
+      region: <region>
