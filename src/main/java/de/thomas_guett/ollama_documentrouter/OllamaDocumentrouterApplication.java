@@ -1,5 +1,7 @@
 package de.thomas_guett.ollama_documentrouter;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import de.thomas_guett.ollama_documentrouter.model.*;
 import de.thomas_guett.ollama_documentrouter.service.DocumentService;
 import de.thomas_guett.ollama_documentrouter.service.OllamaService;
@@ -50,8 +52,8 @@ public class OllamaDocumentrouterApplication {
         return models.getFirst().getName();
 	}
 
-	private String getChatCompletion(List<Message> messages, OllamaClientInformation clientInformation, String model) throws IOException {
-		CompletionResponse completionResponse = new OllamaService(clientInformation).chatCompletion(messages, model);
+	private String getChatCompletion(List<Message> messages, OllamaClientInformation clientInformation, String model, ResponseFormat responseFormat) throws IOException {
+		CompletionResponse completionResponse = new OllamaService(clientInformation).chatCompletion(messages, model, responseFormat);
         assert completionResponse != null;
         return completionResponse.getMessage().getContent();
 	}
@@ -63,6 +65,8 @@ public class OllamaDocumentrouterApplication {
 		Map<String, Object> jobVariables = job.getVariablesAsMap();
 		Object mode = jobVariables.getOrDefault("operationMode", null);
 		Object systemPrompt = jobVariables.getOrDefault("systemPrompt", null);
+		Object responseFormat = jobVariables.getOrDefault("responseFormat", null);
+		Object jsonSchema = jobVariables.getOrDefault("jsonSchema", null);
 		String apiBaseUrl = (String) jobVariables.get("apiBaseUrl");
 		String prompt = (String) jobVariables.get("userPrompt");
 		String model = (String) jobVariables.get("model");
@@ -119,7 +123,16 @@ public class OllamaDocumentrouterApplication {
 			messages.add(imageMessage);
 		}
 		// infer local ai
-		String completion = getChatCompletion(messages, ollamaClientInformation, model);
+		ResponseFormat responseJson = null;
+		if (responseFormat instanceof String) {
+			System.out.println("format: " + responseFormat);
+
+			if(null != jsonSchema) {
+				ObjectMapper om = new ObjectMapper();
+				responseJson = om.convertValue(jsonSchema, ResponseFormat.class);
+			}
+		}
+		String completion = getChatCompletion(messages, ollamaClientInformation, model, responseJson);
 		jobVariables.put("aiResponse", completion);
 		if(mode instanceof String && "agentic".equalsIgnoreCase((String) mode)) {
 			// ensure proper return values

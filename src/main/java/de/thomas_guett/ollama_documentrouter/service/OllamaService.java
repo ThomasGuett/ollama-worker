@@ -28,11 +28,14 @@ public class OllamaService {
 		return this.webClient.get().uri("/tags").retrieve().bodyToMono(ModelListResponse.class);
 	}
 
-	public CompletionResponse chatCompletion(List<Message> messages, String model) {
+	public CompletionResponse chatCompletion(List<Message> messages, String model, ResponseFormat format) {
 		CompletionRequest completionRequest = new CompletionRequest();
 		completionRequest.setModel(model);
 		completionRequest.setStream(false);
 		completionRequest.setMessages(messages);
+		if(null != format) {
+			completionRequest.setFormat(format);
+		}
 		if(null != ollamaClientInformation.getAuthenticationType() && "basicAuth".equalsIgnoreCase(ollamaClientInformation.getAuthenticationType())) {
 			return this.webClient.post().uri("/chat")
 					.headers(h -> h.setBasicAuth(ollamaClientInformation.getUserName(), ollamaClientInformation.getUserPassword()))
