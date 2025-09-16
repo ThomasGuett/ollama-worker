@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import de.thomas_guett.ollama_documentrouter.model.*;
 import de.thomas_guett.ollama_documentrouter.service.DocumentService;
 import de.thomas_guett.ollama_documentrouter.service.OllamaService;
+import io.camunda.client.CamundaClient;
 import io.camunda.client.api.response.ActivatedJob;
 import io.camunda.client.api.worker.JobClient;
 import io.camunda.spring.client.annotation.JobWorker;
@@ -75,8 +76,8 @@ public class OllamaDocumentrouterApplication {
 		String authType = (String) jobVariables.get("authenticationType");
 		OllamaClientInformation ollamaClientInformation;
 		if("basicAuth".equalsIgnoreCase(authType)) {
-			String userName = (String) jobVariables.get("apiUserName");
-			String userPassword = (String) jobVariables.get("apiUserPassword");
+			String userName = (String) jobVariables.get("apiClientId");
+			String userPassword = (String) jobVariables.get("apiClientSecret");
 			ollamaClientInformation = new OllamaClientInformation(apiBaseUrl, authType, userName, userPassword);
 		} else {
 			ollamaClientInformation = new OllamaClientInformation(apiBaseUrl);
@@ -130,10 +131,22 @@ public class OllamaDocumentrouterApplication {
 			if(null != jsonSchema) {
 				ObjectMapper om = new ObjectMapper();
 				responseJson = om.convertValue(jsonSchema, ResponseFormat.class);
+				System.out.println("mappeed out Schema: " + responseJson);
 			}
 		}
 		String completion = getChatCompletion(messages, ollamaClientInformation, model, responseJson);
 		jobVariables.put("aiResponse", completion);
+		// attempt to cast to object if JSON detected
+		if(completion.contains("{") && completion.contains("}")) {
+			Integer startIndex = completion.indexOf("{");
+			Integer lastIndex = completion.lastIndexOf("}");
+			String detectedJsonString = completion.substring(startIndex, lastIndex+1);
+			if(detectedJsonString.length() > 0) {
+				ObjectMapper objectMapper = new ObjectMapper();
+				HashMap<String,Object> hashMap = objectMapper.readValue(detectedJsonString, HashMap.class);
+				jobVariables.put("aiDetectedObject", hashMap);
+			}
+		}
 		if(mode instanceof String && "agentic".equalsIgnoreCase((String) mode)) {
 			// ensure proper return values
 			System.out.println("completion response: " + completion);
